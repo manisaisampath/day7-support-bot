@@ -24,3 +24,23 @@ def test_order_status(client):
 def test_unknown_order(client):
     response = client.post("/chat", json={"customer_email": "priya.s@example.com", "message": "What is the status of order 99999?"})
     assert response.get_json()["action_result"] == "Order not found"
+def test_account_deletion_requires_confirmation(client):
+    response = client.post("/chat", json={
+        "customer_email": "ravi.kumar@example.com",
+        "message": "Please close my account"
+    })
+
+    assert response.status_code == 200
+    assert response.get_json()["action_result"] is None
+    assert "confirm" in response.get_json()["reply"].lower()
+
+
+def test_account_deletion_with_confirmation(client):
+    response = client.post("/chat", json={
+        "customer_email": "ravi.kumar@example.com",
+        "message": "Please close my account",
+        "confirm_account_deletion": True
+    })
+
+    assert response.status_code == 200
+    assert "Deleted account" in response.get_json()["action_result"]

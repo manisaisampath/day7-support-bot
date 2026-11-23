@@ -75,10 +75,26 @@ def chat():
 
     action = result.get("action")
     action_result = None
+
     if action:
         args = result.get("args", {})
+
         if args.get("customer_email") == "from_request":
             args["customer_email"] = email
+
+        if action == "delete_customer_account":
+            if email not in CUSTOMERS:
+                return jsonify({
+                    "reply": "Customer account not found.",
+                    "action_result": None
+                }), 404
+
+            if data.get("confirm_account_deletion") is not True:
+                return jsonify({
+                    "reply": "Please explicitly confirm your account deletion.",
+                    "action_result": None
+                }), 200
+
         action_result = TOOLS[action](**args)
 
     logging.info("REPLY to %s: %s", email, result["reply"])
