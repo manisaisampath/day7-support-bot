@@ -5,7 +5,10 @@ and an action, and the app carries out the action.
 """
 import json
 import logging
+import time
+import uuid
 
+from click import prompt
 from flask import Flask, jsonify, request
 
 from llm import call_llm
@@ -101,10 +104,31 @@ def chat():
         f"Customer phone: {customer.get('phone')}\n"
         f"Customer message: {message}"
     )
-    logging.info("PROMPT: %s", prompt)
+    
+
+    request_id = str(uuid.uuid4())
+    start_time = time.perf_counter()
 
     text, usage = call_llm(prompt, API_KEY)
+
+    latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
     result = json.loads(text)
+
+    input_tokens = usage.get("input_tokens", 0)
+    output_tokens = usage.get("output_tokens", 0)
+
+    cost_inr = round((input_tokens + output_tokens) * 0.0005, 4)
+
+    logging.info(
+    "request_id=%s model=%s latency_ms=%s input_tokens=%s output_tokens=%s cost_inr=%s",
+    request_id,
+    "fake-llm",
+    latency_ms,
+    input_tokens,
+    output_tokens,
+    cost_inr
+)
 
     action = result.get("action")
     action_result = None
@@ -144,7 +168,7 @@ def chat():
         "action_result": None
     }), 400
 
-    logging.info("REPLY to %s: %s", email, result["reply"])
+
     return jsonify({"reply": result["reply"], "action_result": action_result})
 
 
