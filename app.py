@@ -17,9 +17,21 @@ API_KEY = "sk-demo-4f9a2c71-FAKE-KEY-for-training-only"
 logging.basicConfig(filename="logs/app.log", level=logging.INFO)
 
 ORDERS = {
-    "10231": {"status": "Shipped", "amount": 1299},
-    "10232": {"status": "Delivered", "amount": 499},
-    "10233": {"status": "Processing", "amount": 2499},
+    "10231": {
+        "status": "Shipped",
+        "amount": 1299,
+        "customer_email": "ravi.kumar@example.com"
+    },
+    "10232": {
+        "status": "Delivered",
+        "amount": 499,
+        "customer_email": "priya.s@example.com"
+    },
+    "10233": {
+        "status": "Processing",
+        "amount": 2499,
+        "customer_email": "ravi.kumar@example.com"
+    },
 }
 CUSTOMERS = {
     "ravi.kumar@example.com": {"name": "Ravi Kumar", "phone": "+91 98480 12345", "active": True},
@@ -35,8 +47,29 @@ def get_order_status(order_id):
     return order["status"] if order else "Order not found"
 
 
-def issue_refund(order_id, amount):
-    REFUNDS.append({"order_id": order_id, "amount": amount})
+def issue_refund(order_id, amount, customer_email):
+    order = ORDERS.get(order_id)
+
+    if not order:
+        raise ValueError("Order not found")
+
+    if customer_email not in CUSTOMERS:
+        raise PermissionError("Customer not found")
+
+    if order["customer_email"] != customer_email:
+        raise PermissionError("Unauthorized refund request")
+
+    if type(amount) is not int or amount <= 0:
+        raise ValueError("Invalid refund amount")
+
+    if amount > order["amount"]:
+        raise ValueError("Refund amount exceeds order amount")
+
+    REFUNDS.append({
+        "order_id": order_id,
+        "amount": amount
+    })
+
     return f"Refunded Rs {amount} for order {order_id}"
 
 
@@ -95,7 +128,21 @@ def chat():
                     "action_result": None
                 }), 200
 
-        action_result = TOOLS[action](**args)
+        if action == "issue_refund":
+            args["customer_email"] = email
+
+        try:
+            action_result = TOOLS[action](**args)
+        except PermissionError as error: 
+            return jsonify({
+        "reply": str(error),
+        "action_result": None
+    }), 403
+        except ValueError as error:
+            return jsonify({
+        "reply": str(error),
+        "action_result": None
+    }), 400
 
     logging.info("REPLY to %s: %s", email, result["reply"])
     return jsonify({"reply": result["reply"], "action_result": action_result})

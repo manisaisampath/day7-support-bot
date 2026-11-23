@@ -44,3 +44,27 @@ def test_account_deletion_with_confirmation(client):
 
     assert response.status_code == 200
     assert "Deleted account" in response.get_json()["action_result"]
+def test_valid_refund(client):
+    response = client.post("/chat", json={
+        "customer_email": "priya.s@example.com",
+        "message": "I want a refund of Rs 499 for order 10232"
+    })
+
+    assert response.status_code == 200
+    assert "Refunded Rs 499" in response.get_json()["action_result"]
+def test_refund_for_another_customers_order(client):
+    response = client.post("/chat", json={
+        "customer_email": "priya.s@example.com",
+        "message": "I want a refund of Rs 500 for order 10231"
+    })
+
+    assert response.status_code == 403
+    assert response.get_json()["action_result"] is None
+def test_refund_exceeds_order_amount(client):
+    response = client.post("/chat", json={
+        "customer_email": "priya.s@example.com",
+        "message": "I want a refund of Rs 99999 for order 10232"
+    })
+
+    assert response.status_code == 400
+    assert response.get_json()["action_result"] is None
