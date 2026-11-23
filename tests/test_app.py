@@ -24,3 +24,47 @@ def test_order_status(client):
 def test_unknown_order(client):
     response = client.post("/chat", json={"customer_email": "priya.s@example.com", "message": "What is the status of order 99999?"})
     assert response.get_json()["action_result"] == "Order not found"
+def test_account_deletion_requires_confirmation(client):
+    response = client.post("/chat", json={
+        "customer_email": "ravi.kumar@example.com",
+        "message": "Please close my account"
+    })
+
+    assert response.status_code == 200
+    assert response.get_json()["action_result"] is None
+    assert "confirm" in response.get_json()["reply"].lower()
+
+
+def test_account_deletion_with_confirmation(client):
+    response = client.post("/chat", json={
+        "customer_email": "ravi.kumar@example.com",
+        "message": "Please close my account",
+        "confirm_account_deletion": True
+    })
+
+    assert response.status_code == 200
+    assert "Deleted account" in response.get_json()["action_result"]
+def test_valid_refund(client):
+    response = client.post("/chat", json={
+        "customer_email": "priya.s@example.com",
+        "message": "I want a refund of Rs 499 for order 10232"
+    })
+
+    assert response.status_code == 200
+    assert "Refunded Rs 499" in response.get_json()["action_result"]
+def test_refund_for_another_customers_order(client):
+    response = client.post("/chat", json={
+        "customer_email": "priya.s@example.com",
+        "message": "I want a refund of Rs 500 for order 10231"
+    })
+
+    assert response.status_code == 403
+    assert response.get_json()["action_result"] is None
+def test_refund_exceeds_order_amount(client):
+    response = client.post("/chat", json={
+        "customer_email": "priya.s@example.com",
+        "message": "I want a refund of Rs 99999 for order 10232"
+    })
+
+    assert response.status_code == 400
+    assert response.get_json()["action_result"] is None
